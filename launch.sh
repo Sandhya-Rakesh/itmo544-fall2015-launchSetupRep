@@ -66,7 +66,7 @@ aws cloudwatch put-metric-alarm --alarm-name cpuGreaterThanEqualTo30 --alarm-des
 aws cloudwatch put-metric-alarm --alarm-name cpuLessThanEqualTo10 --alarm-description "Alarm when CPU decreases 10 percent" --metric-name CPUUtilization --namespace AWS/EC2 --statistic Average --period 120 --threshold 10 --comparison-operator LessThanOrEqualToThreshold  --evaluation-periods 1 --unit Percent --dimensions "Name=AutoScalingGroupName,Value=$AUTOSCALENAME" --alarm-actions $DECREASEARN
 
 #install mysql-client
-apt-get install -y mysql-client
+#apt-get install -y mysql-client
 
 #Create AWS RDS Instance
 aws rds create-db-instance --db-name $DBNAME --db-instance-identifier $DBINSTANCEIDENTIFIER --db-instance-class db.t2.micro --engine MySQL --master-username $DBUSERNAME --master-user-password $DBPASSWORD --allocated-storage 10 --publicly-accessible
