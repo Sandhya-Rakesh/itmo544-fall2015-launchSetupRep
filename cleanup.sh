@@ -32,19 +32,46 @@ SCALENAME=(`aws autoscaling describe-auto-scaling-groups --output json | grep Au
 echo "The asgs are: " ${SCALENAME[@]}
 echo "the number is: " ${#SCALENAME[@]}
 
+aws ec2 wait instance-terminated --instance-ids ${cleanupARR[@]}
+echo "${cleanupARR[@]} instances terminated"
+
 if [ ${#SCALENAME[@]} -gt 0 ]
   then
 echo "SCALING GROUPS to delete..."
-#aws autoscaling detach-launch-
+#aws autoscaling detach-launch-.
+
+aws autoscaling update-auto-scaling-group --auto-scaling-group-name $SCALENAME --min-size 0 --max-size 0 --desired-capacity 0
+
+aws autoscaling  disable-metrics-collection --auto-scaling-group-name $SCALENAME
+sleep 10
+
+aws autoscaling delete-auto-scaling-group --auto-scaling-group-name $SCALENAME --force-delete
+sleep 5
+
+aws autoscaling delete-launch-configuration --launch-configuration-name $LAUNCHCONF
+
+#aws autoscaling update-auto-scaling-group --auto-scaling-group-name $SCALENAME --min-size 0 --max-size 0 --desired-capacity 0
 
 #aws autoscaling delete-auto-scaling-group --auto-scaling-group-name $SCALENAME
-
 #aws autoscaling delete-launch-configuration --launch-configuration-name $LAUNCHCONF
+fi
 
-#aws autoscaling update-auto-scaling-group --auto-scaling-group-name $SCALENAME --min-size 0 --max-size 0
+mapfile -t dbInstanceARR < <(aws rds describe-db-instances --output json | grep "\"DBInstanceIdentifier" | sed "s/[\"\:\, ]//g" | sed "s/DBInstanceIdentifier//g" )
 
-#aws autoscaling delete-auto-scaling-group --auto-scaling-group-name $SCALENAME
-#aws autoscaling delete-launch-configuration --launch-configuration-name $LAUNCHCONF
+if [ ${#dbInstanceARR[@]} -gt 0 ]
+   then
+   echo "Deleting existing RDS database-instances"
+   LENGTH=${#dbInstanceARR[@]}
+
+      for (( i=0; i<${LENGTH}; i++));
+      do
+      if [ ${dbInstanceARR[i]} == "mp1-sg" ];then  
+        echo "DB Exists"
+        aws rds delete-db-instance --db-instance-identifier mp1-sg --skip-final-snapshot
+        aws rds wait db-instance-deleted --db-instance-identifier mp1-sg
+        echo "DB Deleted"
+      fi  
+     done
 fi
 
 echo "All done"
