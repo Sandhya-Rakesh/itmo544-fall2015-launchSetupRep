@@ -1,5 +1,5 @@
 #!/bin/bash
-# This program takes 6 arguments in the following order
+# This program takes 7 arguments in the following order
 # $1 - ami image-id
 # $2 - count
 # $3 - instance-type
