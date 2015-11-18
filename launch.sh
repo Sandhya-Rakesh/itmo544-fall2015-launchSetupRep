@@ -19,6 +19,8 @@ DBINSTANCEIDENTIFIER=mp1-sg
 DBUSERNAME=sandhyagupta
 DBPASSWORD=sandhya987
 DBNAME=customerrecords
+SNSIMAGEDISPLAYNAME=mp2UploadImages-sg
+SNSMETRICSDISPLAYNAME=mp2CloudMetrics-sg
 
 mapfile -t EC2INSTANCELIST < <(aws ec2 run-instances --image-id $1 --count $2 --instance-type $3 --key-name $6 --security-group-ids $4 --subnet-id $5 --associate-public-ip-address --iam-instance-profile Name=$7 --user-data file://../itmo544-fall2015-environmentRep/install-webserver.sh --output table | grep InstanceId |  sed -e "s/|//g" -e "s/ //g" -e "s/InstanceId//g")
 echo ${EC2INSTANCELIST[@]}
@@ -68,6 +70,14 @@ aws cloudwatch put-metric-alarm --alarm-name cpuLessThanEqualTo10 --alarm-descri
 #install mysql-client
 #apt-get install -y mysql-client
 
+#Create an SNS topic for image upload subscriptions
+SNSTOPICIMAGEARN=(`aws sns create-topic --name $SNSIMAGEDISPLAYNAME`)
+aws sns set-topic-attributes --topic-arn $SNSTOPICIMAGEARN --attribute-name DisplayName --attribute-value $SNSIMAGEDISPLAYNAME    
+
+#Create an SNS topic for cloud watch metrics subscriptions
+SNSTOPICMETRICSARN=(`aws sns create-topic --name $SNSMETRICSDISPLAYNAME`)
+aws sns set-topic-attributes --topic-arn $SNSTOPICMETRICSARN --attribute-name DisplayName --attribute-value $SNSMETRICSDISPLAYNAME
+
 #Create AWS RDS Instance
 aws rds create-db-instance --db-name $DBNAME --db-instance-identifier $DBINSTANCEIDENTIFIER --db-instance-class db.t2.micro --engine MySQL --master-username $DBUSERNAME --master-user-password $DBPASSWORD --allocated-storage 10 --publicly-accessible
 
@@ -79,5 +89,8 @@ RDSENDPOINT=(`aws rds describe-db-instances --db-instance-identifier $DBINSTANCE
 #Connect to the database and create a table
 cat << EOF | mysql -h $RDSENDPOINT -P 3306 -u $DBUSERNAME -p$DBPASSWORD $DBNAME
 CREATE TABLE IF NOT EXISTS userdetails(id INT NOT NULL AUTO_INCREMENT, uname VARCHAR(200) NOT NULL, email VARCHAR(200) NOT NULL, phone VARCHAR(20) NOT NULL, s3rawurl VARCHAR(255) NOT NULL, s3finishedurl VARCHAR(255) NOT NULL, jpgfilename VARCHAR(255) NOT NULL, status INT NOT NULL, createdat DATETIME DEFAULT CURRENT_TIMESTAMP, PRIMARY KEY(id));
+CREATE TABLE IF NOT EXISTS snsdetails(snsid INT NOT NULL AUTO_INCREMENT, snsdisplayname VARCHAR(50) NOT NULL, snsarn VARCHAR(255) NOT NULL, PRIMARY KEY(snsid));
+INSERT INTO snsdetails (snsdisplayname,snsarn) VALUES ('$SNSIMAGEDISPLAYNAME','$SNSTOPICIMAGEARN');
+INSERT INTO snsdetails (snsdisplayname,snsarn) VALUES ('$SNSMETRICSDISPLAYNAME','$SNSTOPICMETRICSARN');
 EOF
 
